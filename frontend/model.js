@@ -53,7 +53,7 @@ async function fetchPlanes(){
         }
 
         const data = await response.json();
-        console.log(data)   
+        //console.log(data)   
 
         const planes = (data.states ?? []).map(plane => ({
             id: plane[0],
