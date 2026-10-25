@@ -7,12 +7,22 @@ PlaneWatcher displays aircraft positions on an interactive map focused on Altst√
 ## What it does
 
 - Loads aircraft automatically when the page opens.
-- Requests updated positions every **2 seconds**, skipping a refresh if the previous request is still running.
+- Requests updated positions every **15 seconds** while the tab is visible, skipping a refresh if the previous request is still running.
+- Moves markers every second between refreshes, estimating positions from each aircraft's speed and heading.
 - Places a marker on the map for each aircraft with valid coordinates.
 - Shows the aircraft's callsign and altitude in metres when you click its marker.
 - Lets you zoom and pan around the map.
 
-The refresh interval controls how often the app requests data; it does not guarantee new aircraft positions every two seconds.
+## Saving OpenSky requests
+
+Anonymous OpenSky access allows about 400 requests per day, so the app tries to use as few as possible:
+
+- The backend caches the OpenSky response for 15 seconds. All tabs and devices share one upstream request.
+- Hidden tabs don't poll at all.
+- On a `429` response, the backend waits for the time in OpenSky's `X-Rate-Limit-Retry-After-Seconds` header (or 60 seconds) before trying again.
+- If OpenSky fails or rate limits the app, the last cached data is returned instead of an error.
+
+The backend terminal logs how many OpenSky credits remain. Change `CACHE_MS` in `backend/server.js` and `POLL_MS` in `frontend/model.js` to trade freshness for requests.
 
 ## Local coverage: Altst√§tten
 
@@ -45,9 +55,10 @@ Keep the backend running while using the app. Open the HTTP address rather than 
 ## How it works
 
 1. Express serves the frontend from the `frontend` directory.
-2. The browser requests `/api/v1/planes` every two seconds.
-3. The backend requests aircraft states from OpenSky for the configured region.
-4. The frontend replaces the previous markers with the returned aircraft positions.
+2. The browser requests `/api/v1/planes` every 15 seconds while the tab is visible.
+3. The backend returns its cached response, or requests aircraft states from OpenSky for the configured region if the cache is older than 15 seconds.
+4. The frontend updates existing markers, adds new aircraft and removes ones that left the area.
+5. Between refreshes, markers move forward along their reported heading at their reported speed.
 
 ## Built with
 
