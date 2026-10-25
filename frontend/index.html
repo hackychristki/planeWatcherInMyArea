@@ -10,6 +10,24 @@
     <title>getPlanes</title>
     <style>
         #map { height: 70vh; }
+
+        /* Leaflet gives divIcons a white box by default */
+        .plane-marker { background: none; border: none; }
+
+        .plane-icon {
+            width: 28px;
+            height: 28px;
+            transition: transform 0.5s ease;
+        }
+        .plane-icon svg {
+            display: block;
+            fill: #0b5cd5;
+            stroke: #fff;
+            stroke-width: 1;
+            paint-order: stroke;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+        }
+        .plane-icon.on-ground svg { fill: #777; }
     </style>
 </head>
 <body>

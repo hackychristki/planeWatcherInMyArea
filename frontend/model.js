@@ -17,8 +17,46 @@ const ANIMATE_MS = 1000;
 const MAX_EXTRAPOLATE_S = 60;
 const METERS_PER_DEGREE = 111320;
 
-// id -> { marker, popup, plane }
+// id -> { marker, popup, icon, plane }
 const planeMarkers = new Map();
+
+const PLANE_SVG =
+  '<svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">' +
+  '<path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>' +
+  '</svg>';
+
+
+// The SVG points north, so rotating by the heading points it where the plane flies
+function updateIcon(icon, plane) {
+  const heading = Number.isFinite(plane.direction) ? plane.direction : 0;
+
+  // Turn the short way, e.g. 350° -> 10° rotates 20° instead of back 340°
+  const current = Number(icon.dataset.rotation ?? heading);
+  const delta = ((heading - current) % 360 + 540) % 360 - 180;
+  const rotation = current + delta;
+
+  icon.dataset.rotation = rotation;
+  icon.style.transform = `rotate(${rotation}deg)`;
+  icon.classList.toggle("on-ground", Boolean(plane.onGround));
+}
+
+function createPlaneIcon(plane) {
+  const icon = document.createElement("div");
+  icon.className = "plane-icon";
+  icon.innerHTML = PLANE_SVG;
+  updateIcon(icon, plane);
+
+  return {
+    icon,
+    leafletIcon: L.divIcon({
+      html: icon,
+      className: "plane-marker",
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      popupAnchor: [0, -14]
+    })
+  };
+}
 
 
 function popupText(plane) {
@@ -69,17 +107,19 @@ function showPlanes(planes) {
     if (existing) {
       existing.plane = plane;
       existing.popup.textContent = popupText(plane);
+      updateIcon(existing.icon, plane);
       existing.marker.setLatLng(estimatePosition(plane));
       return;
     }
 
-    const marker = L.marker(estimatePosition(plane)).addTo(planeLayer);
+    const { icon, leafletIcon } = createPlaneIcon(plane);
+    const marker = L.marker(estimatePosition(plane), { icon: leafletIcon }).addTo(planeLayer);
 
     const popup = document.createElement("div");
     popup.textContent = popupText(plane);
 
     marker.bindPopup(popup);
-    planeMarkers.set(plane.id, { marker, popup, plane });
+    planeMarkers.set(plane.id, { marker, popup, icon, plane });
   });
 
   // Remove aircraft that left the area
